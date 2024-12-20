@@ -1,7 +1,7 @@
 class BookmarkManager {
     constructor() {
         this.bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
-        this.bookmarksContainer = document.getElementById('bookmarksContainer');
+        this.bookmarksContainer = document.getElementById('bookmarks-container');
         this.urlInput = document.getElementById('urlInput');
         this.searchInput = document.getElementById('searchInput');
         this.urlErrorContainer = document.getElementById('urlErrorContainer');
@@ -277,8 +277,13 @@ class BookmarkManager {
 
         const searchTerm = this.searchInput ? this.searchInput.value.trim().toLowerCase() : '';
         
+        // 按时间倒序排序
+        const sortedBookmarks = (bookmarksToRender || this.bookmarks).sort((a, b) => {
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        });
+        
         // 根据搜索词和标签筛选
-        const filteredBookmarks = (bookmarksToRender || this.bookmarks).filter(bookmark => {
+        const filteredBookmarks = sortedBookmarks.filter(bookmark => {
             // 搜索条件
             const matchSearch = !searchTerm || 
                 bookmark.title.toLowerCase().includes(searchTerm) || 
@@ -293,6 +298,16 @@ class BookmarkManager {
             return matchSearch && matchTags;
         });
 
+        // 按日期分组
+        const groupedBookmarks = filteredBookmarks.reduce((groups, bookmark) => {
+            const date = new Date(bookmark.timestamp).toLocaleDateString();
+            if (!groups[date]) {
+                groups[date] = [];
+            }
+            groups[date].push(bookmark);
+            return groups;
+        }, {});
+
         this.bookmarksContainer.innerHTML = filteredBookmarks.length ? '' : `
             <div class="col-12 text-center text-muted p-4">
                 <i class="bi bi-search me-2 fs-1"></i>
@@ -300,51 +315,75 @@ class BookmarkManager {
             </div>
         `;
 
-        filteredBookmarks.forEach(bookmark => {
-            const bookmarkCard = document.createElement('div');
-            
-            const tagsHtml = bookmark.tags && bookmark.tags.length > 0 
-                ? bookmark.tags.map(tag => 
-                    `<span class="badge badge-tag ${this.activeTags.has(tag) ? 'active' : ''}">${tag}</span>`
-                ).join('') 
-                : '<span class="badge bg-secondary">无标签</span>';
+        // 渲染分组的书签
+        Object.keys(groupedBookmarks).forEach(date => {
+            // 创建日期分组容器
+            const dateGroup = document.createElement('div');
+            dateGroup.classList.add('date-group');
 
-            const keywordsHtml = bookmark.keywords && bookmark.keywords.length > 0
-                ? bookmark.keywords.map(keyword => 
-                    `<span class="badge badge-keyword">${keyword}</span>`
-                ).join('')
-                : '<span class="badge bg-secondary">无关键词</span>';
+            // 添加日期标题
+            const dateHeader = document.createElement('div');
+            dateHeader.classList.add('date-group-header');
+            dateHeader.textContent = date;
+            dateGroup.appendChild(dateHeader);
 
-            bookmarkCard.innerHTML = `
-                <div class="bookmark-card">
-                    <img src="${bookmark.thumbnail}" class="bookmark-thumbnail" alt="网页缩略图">
-                    <div class="card-body">
-                        <h5 class="card-title">${bookmark.title}</h5>
-                        <p class="card-text small">
-                            <a href="${bookmark.url}" target="_blank" class="text-decoration-none text-muted">
-                                ${this.truncateUrl(bookmark.url)}
-                            </a>
-                        </p>
-                        <div class="mb-2">
-                            <span class="badge bg-secondary me-1 small">标签：</span>
-                            ${tagsHtml}
+            // 创建书签内容容器
+            const dateGroupContent = document.createElement('div');
+            dateGroupContent.classList.add('date-group-content');
+
+            // 渲染该日期的书签
+            groupedBookmarks[date].forEach(bookmark => {
+                const bookmarkCard = document.createElement('div');
+                
+                const tagsHtml = bookmark.tags && bookmark.tags.length > 0 
+                    ? bookmark.tags.map(tag => 
+                        `<span class="badge badge-tag ${this.activeTags.has(tag) ? 'active' : ''}">${tag}</span>`
+                    ).join('') 
+                    : '<span class="badge bg-secondary">无标签</span>';
+
+                const keywordsHtml = bookmark.keywords && bookmark.keywords.length > 0
+                    ? bookmark.keywords.map(keyword => 
+                        `<span class="badge badge-keyword">${keyword}</span>`
+                    ).join('')
+                    : '<span class="badge bg-secondary">无关键词</span>';
+
+                bookmarkCard.innerHTML = `
+                    <div class="bookmark-card">
+                        <img src="${bookmark.thumbnail}" class="bookmark-thumbnail" alt="网页缩略图">
+                        <div class="card-body">
+                            <h5 class="card-title">${bookmark.title}</h5>
+                            <p class="card-text small">
+                                <a href="${bookmark.url}" target="_blank" class="text-decoration-none text-muted">
+                                    ${this.truncateUrl(bookmark.url)}
+                                </a>
+                            </p>
+                            <div class="mb-2">
+                                <span class="badge bg-secondary me-1 small">标签：</span>
+                                ${tagsHtml}
+                            </div>
+                            <div class="mb-2">
+                                <span class="badge bg-secondary me-1 small">关键词：</span>
+                                ${keywordsHtml}
+                            </div>
+                            <p class="card-text small text-muted flex-grow-1">${bookmark.summary || '暂无摘要'}</p>
                         </div>
-                        <div class="mb-2">
-                            <span class="badge bg-secondary me-1 small">关键词：</span>
-                            ${keywordsHtml}
+                        <div class="card-footer">
+                            <small class="text-muted">${bookmark.timestamp}</small>
+                            <button class="btn btn-sm btn-outline-danger delete-bookmark" data-id="${bookmark.id}">
+                                删除
+                            </button>
                         </div>
-                        <p class="card-text small text-muted flex-grow-1">${bookmark.summary || '暂无摘要'}</p>
                     </div>
-                    <div class="card-footer">
-                        <small class="text-muted">${bookmark.timestamp}</small>
-                        <button class="btn btn-sm btn-outline-danger delete-bookmark" data-id="${bookmark.id}">
-                            删除
-                        </button>
-                    </div>
-                </div>
-            `;
+                `;
+                
+                dateGroupContent.appendChild(bookmarkCard);
+            });
+
+            // 将内容容器添加到日期分组
+            dateGroup.appendChild(dateGroupContent);
             
-            this.bookmarksContainer.appendChild(bookmarkCard);
+            // 将日期分组添加到主容器
+            this.bookmarksContainer.appendChild(dateGroup);
         });
 
         this.bookmarksContainer.querySelectorAll('.delete-bookmark').forEach(button => {

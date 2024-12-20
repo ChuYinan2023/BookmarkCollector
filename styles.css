@@ -1,20 +1,57 @@
-body {
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
     background-color: #f4f6f9;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.add-bookmark-section {
-    max-width: 600px;
-    margin: 0 auto;
+.container-fluid {
+    width: 100%;
+    padding: 0 20px;
+    margin: 0;
 }
 
-.search-container {
-    max-width: 600px;
-    margin: 10px auto;
+.navbar {
+    width: 100%;
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%) !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px 20px;
+}
+
+.navbar-brand {
+    color: white !important;
+    font-weight: bold;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand i {
+    margin-right: 10px;
+    font-size: 2rem;
+    color: #fff;
+}
+
+.input-group {
+    width: 100%;
+    border-radius: 10px;
+}
+
+.input-group-text {
+    background-color: transparent;
+    border: none;
+}
+
+.tag-filter-container {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .tag-filter {
-    max-width: 800px;
+    max-width: 100%;
     margin: 10px auto;
 }
 
@@ -36,17 +73,22 @@ body {
 }
 
 .stats {
-    max-width: 800px;
+    max-width: 100%;
     margin: 10px auto;
     text-align: center;
 }
 
+.bookmarks-container {
+    width: 100%;
+    padding: 0 20px;
+}
+
 .bookmarks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 15px;
     padding: 10px;
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
 }
 
@@ -58,6 +100,8 @@ body {
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     background-color: white;
+    width: 100%;
+    height: 100%;
 }
 
 .bookmark-card:hover {
@@ -126,31 +170,69 @@ body {
     font-size: 0.8rem;
 }
 
-.input-group {
-    border-radius: 10px;
+.date-group {
+    width: 100%;
+    margin-bottom: 20px;
 }
 
-.input-group-text {
-    background-color: transparent;
-    border: none;
+.date-group-header {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    padding: 5px 10px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #e9ecef;
 }
 
-.footer {
-    opacity: 0.9;
-}
-
-#urlErrorContainer {
-    margin-top: 5px;
-}
-
-.is-invalid {
-    border-color: #dc3545 !important;
+.date-group-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    width: 100%;
 }
 
 @media (max-width: 768px) {
+    .container-fluid {
+        padding: 0 10px;
+    }
+
+    .navbar {
+        padding: 10px;
+    }
+
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+    
+    .navbar-brand i {
+        font-size: 1.5rem;
+    }
+
+    .date-group-content {
+        grid-template-columns: 1fr;
+    }
+
     .bookmarks-grid {
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
         gap: 10px;
         padding: 5px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 992px) {
+    .date-group-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 993px) and (max-width: 1200px) {
+    .date-group-content {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1201px) {
+    .date-group-content {
+        grid-template-columns: repeat(4, 1fr);
     }
 }

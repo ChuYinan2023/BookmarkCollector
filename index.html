@@ -3,59 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>书签收藏管理器</title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <title>书签收藏夹</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container-fluid">
-        <div class="row mb-3">
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="bi bi-bookmarks-fill"></i>
+                    书签收藏夹
+                </a>
+            </div>
+        </nav>
+
+        <div class="row add-bookmark-section">
             <div class="col-12">
-                <h2 class="text-center my-3">
-                    <i class="bi bi-bookmark-star me-2"></i>书签收藏
-                </h2>
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="basic-addon1">
+                        <i class="bi bi-link-45deg"></i>
+                    </span>
+                    <input type="text" id="urlInput" class="form-control" placeholder="输入网址" aria-label="网址" aria-describedby="basic-addon1">
+                    <button class="btn btn-primary" type="button" id="addBookmarkBtn">添加</button>
+                </div>
+                <div id="urlErrorContainer" class="text-danger"></div>
             </div>
         </div>
 
-        <div class="row mb-3">
+        <div class="row search-container">
             <div class="col-12">
-                <div class="add-bookmark-section">
-                    <div class="input-group">
-                        <input type="text" id="urlInput" class="form-control" placeholder="输入网址并回车添加">
-                    </div>
-                    <div id="urlErrorContainer" class="text-danger small mt-1"></div>
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="basic-addon2">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索书签" aria-label="搜索" aria-describedby="basic-addon2">
                 </div>
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="search-container">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" id="searchInput" class="form-control" placeholder="搜索书签...">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="tag-filter">
-                    <div id="tagFilterContainer" class="d-flex flex-wrap"></div>
-                </div>
+        <div class="row tag-filter">
+            <div class="col-12 tag-filter-container" id="tagFilterContainer">
+                <!-- 标签将在此动态生成 -->
             </div>
         </div>
 
         <div class="row">
             <div class="col-12">
-                <div id="bookmarksContainer" class="bookmarks-grid"></div>
+                <div id="bookmarks-container" class="bookmarks-container"></div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
