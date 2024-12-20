@@ -55,16 +55,20 @@ class BookmarkManager {
             // 获取真实标题和AI生成的标签
             const response = await this.fetchRealTitle(normalizedUrl);
             
+            console.log('添加书签 - 响应数据:', response);  // 调试日志
+            
             const bookmark = {
                 id: Date.now(),
                 url: normalizedUrl,
                 title: response.title || this.safeGenerateTitle(normalizedUrl),
-                thumbnail: this.generatePlaceholderImage(new URL(normalizedUrl).hostname),
+                thumbnail: response.thumbnail || this.generatePlaceholderImage(new URL(normalizedUrl).hostname),
                 tags: response.tags || this.safeGenerateTags(new URL(normalizedUrl).hostname),
                 keywords: response.keywords || this.safeGenerateKeywords(new URL(normalizedUrl).hostname),
                 summary: response.summary || this.safeGenerateSummary(normalizedUrl),
                 timestamp: new Date().toLocaleString()
             };
+
+            console.log('创建的书签:', bookmark);  // 调试日志
 
             this.bookmarks.push(bookmark);
             this.saveBookmarks();
@@ -89,11 +93,14 @@ class BookmarkManager {
                 return {};
             }
             
+            console.log('获取标题响应:', data);  // 调试日志
+            
             return {
                 title: data.title,
                 tags: data.tags,
                 keywords: data.keywords,
-                summary: data.summary
+                summary: data.summary,
+                thumbnail: data.thumbnail  // 确保使用后端返回的 thumbnail
             };
         } catch (error) {
             console.warn('获取标题失败', error);
@@ -257,56 +264,88 @@ class BookmarkManager {
         }
     }
 
+    getBookmarkThumbnail(bookmark) {
+        try {
+            // 提取主机名，移除 www. 前缀
+            const hostname = new URL(bookmark.url).hostname.replace('www.', '');
+            
+            // Google Favicon API 构建
+            const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`;
+            
+            // 特殊处理：对于一些特殊域名，可能需要额外处理
+            const specialDomains = {
+                'github.com': 'https://github.githubassets.com/favicons/favicon.png',
+                'stackoverflow.com': 'https://cdn.sstatic.net/Sites/stackoverflow/img/favicon.ico'
+            };
+
+            // 如果是特殊域名，使用特定的 favicon
+            if (specialDomains[hostname]) {
+                return specialDomains[hostname];
+            }
+
+            return faviconUrl;
+        } catch (error) {
+            console.warn(`获取缩略图失败: ${error}`);
+            return this.generatePlaceholderImage(new URL(bookmark.url).hostname);
+        }
+    }
+
     renderTagFilters() {
         if (!this.tagFilterContainer) return;
 
-        // 收集所有唯一标签
-        const allTags = new Set(
-            this.bookmarks.flatMap(bookmark => bookmark.tags || [])
-        );
+        // 统计每个标签的出现次数
+        const tagCounts = this.bookmarks.reduce((counts, bookmark) => {
+            bookmark.tags.forEach(tag => {
+                counts[tag] = (counts[tag] || 0) + 1;
+            });
+            return counts;
+        }, {});
 
+        // 将标签按出现次数降序排列
+        const sortedTags = Object.entries(tagCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([tag, count]) => ({ tag, count }));
+
+        // 清空现有标签
         this.tagFilterContainer.innerHTML = '';
-        this.activeTags = new Set(); // 新增：记录当前选中的标签
 
-        allTags.forEach(tag => {
-            const tagBadge = document.createElement('span');
-            tagBadge.classList.add('badge', 'bg-light', 'text-dark', 'me-1', 'mb-1', 'tag-filter-badge');
-            tagBadge.textContent = tag;
-            tagBadge.dataset.tag = tag;
+        // 创建标签过滤器
+        sortedTags.forEach(({ tag, count }) => {
+            const tagElement = document.createElement('button');
+            tagElement.className = `btn btn-sm m-1 ${this.activeTags.has(tag) ? 'btn-primary' : 'btn-outline-secondary'}`;
+            tagElement.innerHTML = `${tag} (${count})`;
             
-            tagBadge.addEventListener('click', () => {
-                // 切换标签的选中状态
+            tagElement.addEventListener('click', () => {
                 if (this.activeTags.has(tag)) {
                     this.activeTags.delete(tag);
-                    tagBadge.classList.remove('active');
+                    tagElement.classList.remove('btn-primary');
+                    tagElement.classList.add('btn-outline-secondary');
                 } else {
                     this.activeTags.add(tag);
-                    tagBadge.classList.add('active');
+                    tagElement.classList.remove('btn-outline-secondary');
+                    tagElement.classList.add('btn-primary');
                 }
-                
-                // 根据选中的标签重新渲染书签
                 this.renderBookmarks();
             });
-            
-            this.tagFilterContainer.appendChild(tagBadge);
-        });
 
-        // 移除统计信息更新代码
-        // if (this.totalBookmarksCount) {
-        //     this.totalBookmarksCount.textContent = `${this.bookmarks.length} 个书签 | ${allTags.size} 个标签`;
-        // }
+            this.tagFilterContainer.appendChild(tagElement);
+        });
     }
 
     renderBookmarks(bookmarksToRender = null) {
-        if (!this.bookmarksContainer) return;
+        // 清空现有书签容器
+        this.bookmarksContainer.innerHTML = '';
+
+        // 使用传入的书签列表，或使用全部书签
+        const bookmarks = bookmarksToRender || this.bookmarks;
 
         const searchTerm = this.searchInput ? this.searchInput.value.trim().toLowerCase() : '';
-        
+
         // 按时间倒序排序
-        const sortedBookmarks = (bookmarksToRender || this.bookmarks).sort((a, b) => {
+        const sortedBookmarks = bookmarks.sort((a, b) => {
             return new Date(b.timestamp) - new Date(a.timestamp);
         });
-        
+
         // 根据搜索词和标签筛选
         const filteredBookmarks = sortedBookmarks.filter(bookmark => {
             // 搜索条件
@@ -333,83 +372,94 @@ class BookmarkManager {
             return groups;
         }, {});
 
-        this.bookmarksContainer.innerHTML = filteredBookmarks.length ? '' : `
-            <div class="col-12 text-center text-muted p-4">
-                <i class="bi bi-search me-2 fs-1"></i>
-                <p class="mt-2">没有找到匹配的收藏，请尝试其他搜索词或标签</p>
-            </div>
-        `;
+        if (filteredBookmarks.length === 0) {
+            this.bookmarksContainer.innerHTML = `
+                <div class="col-12 text-center text-muted p-4">
+                    <i class="bi bi-search me-2 fs-1"></i>
+                    <p class="mt-2">没有找到匹配的收藏，请尝试其他搜索词或标签</p>
+                </div>
+            `;
+        } else {
+            Object.keys(groupedBookmarks).forEach(date => {
+                // 创建日期分组容器
+                const dateGroup = document.createElement('div');
+                dateGroup.classList.add('date-group');
 
-        // 渲染分组的书签
-        Object.keys(groupedBookmarks).forEach(date => {
-            // 创建日期分组容器
-            const dateGroup = document.createElement('div');
-            dateGroup.classList.add('date-group');
+                // 添加日期标题
+                const dateHeader = document.createElement('div');
+                dateHeader.classList.add('date-group-header');
+                dateHeader.textContent = date;
+                dateGroup.appendChild(dateHeader);
 
-            // 添加日期标题
-            const dateHeader = document.createElement('div');
-            dateHeader.classList.add('date-group-header');
-            dateHeader.textContent = date;
-            dateGroup.appendChild(dateHeader);
+                // 创建书签内容容器
+                const dateGroupContent = document.createElement('div');
+                dateGroupContent.classList.add('date-group-content');
 
-            // 创建书签内容容器
-            const dateGroupContent = document.createElement('div');
-            dateGroupContent.classList.add('date-group-content');
+                // 渲染该日期的书签
+                groupedBookmarks[date].forEach(bookmark => {
+                    console.log('渲染书签:', bookmark);  // 调试日志
 
-            // 渲染该日期的书签
-            groupedBookmarks[date].forEach(bookmark => {
-                const bookmarkCard = document.createElement('div');
-                
-                const tagsHtml = bookmark.tags && bookmark.tags.length > 0 
-                    ? bookmark.tags.map(tag => 
-                        `<span class="badge badge-tag ${this.activeTags.has(tag) ? 'active' : ''}">${tag}</span>`
-                    ).join('') 
-                    : '<span class="badge bg-secondary">无标签</span>';
+                    const tagsHtml = bookmark.tags && bookmark.tags.length > 0 
+                        ? bookmark.tags.map(tag => 
+                            `<span class="badge badge-tag ${this.activeTags.has(tag) ? 'active' : ''}">${tag}</span>`
+                        ).join('') 
+                        : '<span class="badge bg-secondary">无标签</span>';
 
-                const keywordsHtml = bookmark.keywords && bookmark.keywords.length > 0
-                    ? bookmark.keywords.map(keyword => 
-                        `<span class="badge badge-keyword">${keyword}</span>`
-                    ).join('')
-                    : '<span class="badge bg-secondary">无关键词</span>';
+                    const keywordsHtml = bookmark.keywords && bookmark.keywords.length > 0
+                        ? bookmark.keywords.map(keyword => 
+                            `<span class="badge badge-keyword">${keyword}</span>`
+                        ).join('')
+                        : '<span class="badge bg-secondary">无关键词</span>';
 
-                bookmarkCard.innerHTML = `
-                    <div class="bookmark-card">
-                        <img src="${bookmark.thumbnail}" class="bookmark-thumbnail" alt="网页缩略图">
-                        <div class="card-body">
-                            <h5 class="card-title">${bookmark.title}</h5>
-                            <p class="card-text small">
-                                <a href="${bookmark.url}" target="_blank" class="text-decoration-none text-muted">
-                                    ${this.truncateUrl(bookmark.url)}
-                                </a>
-                            </p>
-                            <div class="mb-2">
-                                <span class="badge bg-secondary me-1 small">标签：</span>
-                                ${tagsHtml}
+                    const thumbnailSrc = this.getBookmarkThumbnail(bookmark);
+
+                    console.log('缩略图 URL:', thumbnailSrc);  // 调试日志
+
+                    const bookmarkCard = document.createElement('div');
+                    bookmarkCard.innerHTML = `
+                        <div class="bookmark-card">
+                            <img 
+                                src="${thumbnailSrc}" 
+                                alt="网站缩略图" 
+                                class="bookmark-thumbnail" 
+                                onerror="console.error('图片加载失败:', this.src); this.src='${this.generatePlaceholderImage(new URL(bookmark.url).hostname)}'"
+                            >
+                            <div class="card-body">
+                                <h5 class="card-title">${bookmark.title}</h5>
+                                <p class="card-text small">
+                                    <a href="${bookmark.url}" target="_blank" class="text-decoration-none text-muted">
+                                        ${this.truncateUrl(bookmark.url)}
+                                    </a>
+                                </p>
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary me-1 small">标签：</span>
+                                    ${tagsHtml}
+                                </div>
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary me-1 small">关键词：</span>
+                                    ${keywordsHtml}
+                                </div>
+                                <p class="card-text small text-muted flex-grow-1">${bookmark.summary || '暂无摘要'}</p>
                             </div>
-                            <div class="mb-2">
-                                <span class="badge bg-secondary me-1 small">关键词：</span>
-                                ${keywordsHtml}
+                            <div class="card-footer">
+                                <small class="text-muted">${bookmark.timestamp}</small>
+                                <button class="btn btn-sm btn-outline-danger delete-bookmark" data-id="${bookmark.id}">
+                                    删除
+                                </button>
                             </div>
-                            <p class="card-text small text-muted flex-grow-1">${bookmark.summary || '暂无摘要'}</p>
                         </div>
-                        <div class="card-footer">
-                            <small class="text-muted">${bookmark.timestamp}</small>
-                            <button class="btn btn-sm btn-outline-danger delete-bookmark" data-id="${bookmark.id}">
-                                删除
-                            </button>
-                        </div>
-                    </div>
-                `;
+                    `;
+                    
+                    dateGroupContent.appendChild(bookmarkCard);
+                });
+
+                // 将内容容器添加到日期分组
+                dateGroup.appendChild(dateGroupContent);
                 
-                dateGroupContent.appendChild(bookmarkCard);
+                // 将日期分组添加到主容器
+                this.bookmarksContainer.appendChild(dateGroup);
             });
-
-            // 将内容容器添加到日期分组
-            dateGroup.appendChild(dateGroupContent);
-            
-            // 将日期分组添加到主容器
-            this.bookmarksContainer.appendChild(dateGroup);
-        });
+        }
 
         this.bookmarksContainer.querySelectorAll('.delete-bookmark').forEach(button => {
             button.addEventListener('click', (e) => {
@@ -431,6 +481,29 @@ class BookmarkManager {
         this.renderTagFilters();
     }
 }
+
+// 添加动态样式
+const dynamicStyleSheet = `
+<style>
+.bookmark-thumbnail {
+    width: 128px;
+    height: 128px;
+    object-fit: cover;  /* 确保图像填充整个区域 */
+    border-radius: 12px; /* 更圆润的圆角 */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* 轻微阴影 */
+    transition: transform 0.2s, box-shadow 0.2s; /* 平滑过渡效果 */
+    border: 2px solid rgba(0,0,0,0.05); /* 轻微边框 */
+}
+
+.bookmark-thumbnail:hover {
+    transform: scale(1.05); /* 悬停时略微放大 */
+    box-shadow: 0 6px 8px rgba(0,0,0,0.15); /* 悬停时阴影更明显 */
+}
+</style>
+`;
+
+// 在页面加载时插入样式
+document.head.insertAdjacentHTML('beforeend', dynamicStyleSheet);
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM 加载完成，初始化 BookmarkManager');
