@@ -1,0 +1,156 @@
+body {
+    background-color: #f4f6f9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.add-bookmark-section {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.search-container {
+    max-width: 600px;
+    margin: 10px auto;
+}
+
+.tag-filter {
+    max-width: 800px;
+    margin: 10px auto;
+}
+
+.tag-filter .badge {
+    margin-right: 4px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+    font-size: 0.8rem;
+}
+
+.tag-filter .badge:hover, 
+.tag-filter .badge.active {
+    opacity: 1;
+    border-color: #007bff;
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.stats {
+    max-width: 800px;
+    margin: 10px auto;
+    text-align: center;
+}
+
+.bookmarks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+    padding: 10px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.bookmark-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: white;
+}
+
+.bookmark-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.bookmark-thumbnail {
+    height: 180px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 12px;
+}
+
+.card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.badge-tag, .badge-keyword {
+    margin-right: 4px;
+    margin-bottom: 4px;
+    opacity: 0.9;
+    font-size: 0.7rem;
+}
+
+.badge-tag {
+    background-color: #e9ecef;
+    color: #495057;
+    transition: all 0.3s;
+}
+
+.badge-tag.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.badge-keyword {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.card-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.delete-bookmark {
+    font-size: 0.8rem;
+}
+
+.input-group {
+    border-radius: 10px;
+}
+
+.input-group-text {
+    background-color: transparent;
+    border: none;
+}
+
+.footer {
+    opacity: 0.9;
+}
+
+#urlErrorContainer {
+    margin-top: 5px;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+@media (max-width: 768px) {
+    .bookmarks-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 10px;
+        padding: 5px;
+    }
+}
