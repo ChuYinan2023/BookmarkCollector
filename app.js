@@ -39,7 +39,7 @@ class BookmarkManager {
         }
     }
 
-    addBookmark() {
+    async addBookmark() {
         const urlInput = this.urlInput.value.trim();
         
         if (!urlInput) {
@@ -52,14 +52,17 @@ class BookmarkManager {
         try {
             const normalizedUrl = this.normalizeUrl(urlInput);
             
+            // 获取真实标题和AI生成的标签
+            const response = await this.fetchRealTitle(normalizedUrl);
+            
             const bookmark = {
                 id: Date.now(),
                 url: normalizedUrl,
-                title: this.safeGenerateTitle(normalizedUrl),
+                title: response.title || this.safeGenerateTitle(normalizedUrl),
                 thumbnail: this.generatePlaceholderImage(new URL(normalizedUrl).hostname),
-                tags: this.safeGenerateTags(new URL(normalizedUrl).hostname),
-                keywords: this.safeGenerateKeywords(new URL(normalizedUrl).hostname),
-                summary: this.safeGenerateSummary(normalizedUrl),
+                tags: response.tags || this.safeGenerateTags(new URL(normalizedUrl).hostname),
+                keywords: response.keywords || this.safeGenerateKeywords(new URL(normalizedUrl).hostname),
+                summary: response.summary || this.safeGenerateSummary(normalizedUrl),
                 timestamp: new Date().toLocaleString()
             };
 
@@ -73,6 +76,28 @@ class BookmarkManager {
             if (this.urlErrorContainer) {
                 this.urlErrorContainer.textContent = '请输入有效的网址';
             }
+        }
+    }
+
+    async fetchRealTitle(url) {
+        try {
+            const response = await fetch(`http://localhost:5000/get_title?url=${encodeURIComponent(url)}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                console.warn('获取标题失败', data.error);
+                return {};
+            }
+            
+            return {
+                title: data.title,
+                tags: data.tags,
+                keywords: data.keywords,
+                summary: data.summary
+            };
+        } catch (error) {
+            console.warn('获取标题失败', error);
+            return {};
         }
     }
 
