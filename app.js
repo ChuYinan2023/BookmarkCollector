@@ -198,6 +198,13 @@ class BookmarkManager {
     }
 
     generatePlaceholderImage(hostname) {
+        // 个人头像路径
+        const avatarPath = 'assets/avatar.png';
+        
+        // 直接返回头像图片
+        return avatarPath;
+
+        // 以下是原有的备用逻辑，保留以防头像加载失败
         const colors = [
             '#3498db', '#2ecc71', '#e74c3c', '#f39c12', 
             '#9b59b6', '#1abc9c', '#34495e', '#e67e22'
@@ -428,8 +435,8 @@ class BookmarkManager {
                         </div>
                         <div class="card-body">
                             <h5 class="card-title">${bookmark.title}</h5>
-                            <p class="card-text small">
-                                ${this.truncateUrl(bookmark.url)}
+                            <p class="card-text small text-muted">
+                                ${bookmark.summary || this.truncateUrl(bookmark.url)}
                             </p>
                             <div class="mb-2">
                                 <span class="badge bg-secondary me-1 small">标签：</span>
@@ -439,6 +446,9 @@ class BookmarkManager {
                                 <span class="badge bg-secondary me-1 small">关键词：</span>
                                 ${keywordsHtml}
                             </div>
+                        </div>
+                        <div class="card-footer">
+                            <small class="text-muted">${new Date(bookmark.timestamp).toLocaleString()}</small>
                         </div>
                     `;
                     

@@ -125,8 +125,9 @@ body, html {
 .bookmark-thumbnail {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
+    object-fit: cover;  
+    border-radius: 12px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
 }
 
 .bookmark-card:hover .bookmark-thumbnail {
@@ -182,6 +183,7 @@ body, html {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    color: #6c757d;
 }
 
 .delete-bookmark {
