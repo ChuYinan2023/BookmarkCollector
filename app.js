@@ -31,6 +31,23 @@ class BookmarkManager {
         if (this.searchInput) {
             this.searchInput.addEventListener('input', () => this.renderBookmarks());
         }
+
+        // 视图切换按钮事件监听
+        const gridViewBtn = document.getElementById('gridViewBtn');
+        const listViewBtn = document.getElementById('listViewBtn');
+        const bookmarksContainer = this.bookmarksContainer;
+
+        gridViewBtn.addEventListener('click', () => {
+            bookmarksContainer.classList.remove('list-view');
+            gridViewBtn.classList.add('active');
+            listViewBtn.classList.remove('active');
+        });
+
+        listViewBtn.addEventListener('click', () => {
+            bookmarksContainer.classList.add('list-view');
+            listViewBtn.classList.add('active');
+            gridViewBtn.classList.remove('active');
+        });
     }
 
     clearUrlError() {
@@ -52,29 +69,50 @@ class BookmarkManager {
         try {
             const normalizedUrl = this.normalizeUrl(urlInput);
             
-            // 获取真实标题和AI生成的标签
-            const response = await this.fetchRealTitle(normalizedUrl);
-            
-            console.log('添加书签 - 响应数据:', response);  // 调试日志
-            
-            const bookmark = {
+            // 立即创建一个临时书签
+            const tempBookmark = {
                 id: Date.now(),
                 url: normalizedUrl,
-                title: response.title || this.safeGenerateTitle(normalizedUrl),
-                thumbnail: response.thumbnail || this.generatePlaceholderImage(new URL(normalizedUrl).hostname),
-                tags: response.tags || this.safeGenerateTags(new URL(normalizedUrl).hostname),
-                keywords: response.keywords || this.safeGenerateKeywords(new URL(normalizedUrl).hostname),
-                summary: response.summary || this.safeGenerateSummary(normalizedUrl),
-                timestamp: new Date().toLocaleString()
+                title: this.safeGenerateTitle(normalizedUrl),
+                thumbnail: this.generatePlaceholderImage(new URL(normalizedUrl).hostname),
+                tags: this.safeGenerateTags(new URL(normalizedUrl).hostname),
+                keywords: this.safeGenerateKeywords(new URL(normalizedUrl).hostname),
+                summary: this.safeGenerateSummary(normalizedUrl),
+                timestamp: new Date().toLocaleString(),
+                isTemporary: true  // 标记为临时书签
             };
 
-            console.log('创建的书签:', bookmark);  // 调试日志
-
-            this.bookmarks.push(bookmark);
+            // 立即添加并渲染临时书签
+            this.bookmarks.unshift(tempBookmark);
             this.saveBookmarks();
             this.renderBookmarks();
             this.renderTagFilters();
             this.urlInput.value = '';
+
+            // 异步获取更多信息
+            try {
+                const response = await this.fetchRealTitle(normalizedUrl);
+                
+                // 找到并更新临时书签
+                const index = this.bookmarks.findIndex(b => b.id === tempBookmark.id);
+                if (index !== -1) {
+                    this.bookmarks[index] = {
+                        ...tempBookmark,
+                        title: response.title || tempBookmark.title,
+                        tags: response.tags || tempBookmark.tags,
+                        keywords: response.keywords || tempBookmark.keywords,
+                        summary: response.summary || tempBookmark.summary,
+                        thumbnail: response.thumbnail || tempBookmark.thumbnail,
+                        isTemporary: false  // 移除临时标记
+                    };
+                    
+                    this.saveBookmarks();
+                    this.renderBookmarks();
+                    this.renderTagFilters();
+                }
+            } catch (asyncError) {
+                console.warn('异步更新书签信息失败', asyncError);
+            }
         } catch (error) {
             console.warn('添加书签时出现问题', error);
             if (this.urlErrorContainer) {
@@ -297,6 +335,33 @@ class BookmarkManager {
         }
     }
 
+    formatWechatStyleTime(timestamp) {
+        const now = new Date();
+        const targetDate = new Date(timestamp);
+        const diffSeconds = (now - targetDate) / 1000;
+        const diffMinutes = diffSeconds / 60;
+        const diffHours = diffMinutes / 60;
+        const diffDays = diffHours / 24;
+
+        if (diffSeconds < 60) {
+            return '刚刚';
+        } else if (diffMinutes < 60) {
+            return `${Math.floor(diffMinutes)}分钟前`;
+        } else if (diffHours < 24) {
+            return `${Math.floor(diffHours)}小时前`;
+        } else if (diffDays < 7) {
+            return `${Math.floor(diffDays)}天前`;
+        } else {
+            const year = targetDate.getFullYear();
+            const month = (targetDate.getMonth() + 1).toString().padStart(2, '0');
+            const day = targetDate.getDate().toString().padStart(2, '0');
+            
+            return now.getFullYear() === year 
+                ? `${month}-${day}` 
+                : `${year}-${month}-${day}`;
+        }
+    }
+
     renderTagFilters() {
         if (!this.tagFilterContainer) return;
 
@@ -369,16 +434,6 @@ class BookmarkManager {
             return matchSearch && matchTags;
         });
 
-        // 按日期分组
-        const groupedBookmarks = filteredBookmarks.reduce((groups, bookmark) => {
-            const date = new Date(bookmark.timestamp).toLocaleDateString();
-            if (!groups[date]) {
-                groups[date] = [];
-            }
-            groups[date].push(bookmark);
-            return groups;
-        }, {});
-
         if (filteredBookmarks.length === 0) {
             this.bookmarksContainer.innerHTML = `
                 <div class="col-12 text-center text-muted p-4">
@@ -387,97 +442,82 @@ class BookmarkManager {
                 </div>
             `;
         } else {
-            Object.keys(groupedBookmarks).forEach(date => {
-                // 创建日期分组容器
-                const dateGroup = document.createElement('div');
-                dateGroup.classList.add('date-group');
+            // 直接渲染所有书签，不再按日期分组
+            filteredBookmarks.forEach(bookmark => {
+                const tagsHtml = bookmark.tags && bookmark.tags.length > 0 
+                    ? bookmark.tags.map(tag => 
+                        `<span class="badge badge-tag ${this.activeTags.has(tag) ? 'active' : ''}">${tag}</span>`
+                    ).join('') 
+                    : '<span class="badge bg-secondary">无标签</span>';
 
-                // 添加日期标题
-                const dateHeader = document.createElement('div');
-                dateHeader.classList.add('date-group-header');
-                dateHeader.textContent = date;
-                dateGroup.appendChild(dateHeader);
+                const keywordsHtml = bookmark.keywords && bookmark.keywords.length > 0
+                    ? bookmark.keywords.map(keyword => 
+                        `<span class="badge badge-keyword">${keyword}</span>`
+                    ).join('')
+                    : '<span class="badge bg-secondary">无关键词</span>';
 
-                // 创建书签内容容器
-                const dateGroupContent = document.createElement('div');
-                dateGroupContent.classList.add('date-group-content');
+                const thumbnailSrc = this.getBookmarkThumbnail(bookmark);
 
-                // 渲染该日期的书签
-                groupedBookmarks[date].forEach(bookmark => {
-                    console.log('渲染书签:', bookmark);  // 调试日志
+                const bookmarkCard = document.createElement('div');
+                bookmarkCard.classList.add('bookmark-card', 'clickable-card');
+                
+                // 如果是临时书签，添加特殊样式
+                if (bookmark.isTemporary) {
+                    bookmarkCard.classList.add('temporary-bookmark');
+                }
 
-                    const tagsHtml = bookmark.tags && bookmark.tags.length > 0 
-                        ? bookmark.tags.map(tag => 
-                            `<span class="badge badge-tag ${this.activeTags.has(tag) ? 'active' : ''}">${tag}</span>`
-                        ).join('') 
-                        : '<span class="badge bg-secondary">无标签</span>';
-
-                    const keywordsHtml = bookmark.keywords && bookmark.keywords.length > 0
-                        ? bookmark.keywords.map(keyword => 
-                            `<span class="badge badge-keyword">${keyword}</span>`
-                        ).join('')
-                        : '<span class="badge bg-secondary">无关键词</span>';
-
-                    const thumbnailSrc = this.getBookmarkThumbnail(bookmark);
-
-                    console.log('缩略图 URL:', thumbnailSrc);  // 调试日志
-
-                    const bookmarkCard = document.createElement('div');
-                    bookmarkCard.classList.add('bookmark-card', 'clickable-card');
-                    bookmarkCard.innerHTML = `
-                        <div class="bookmark-thumbnail-wrapper">
-                            <img 
-                                src="${thumbnailSrc}" 
-                                alt="网站缩略图" 
-                                class="bookmark-thumbnail" 
-                                onerror="console.error('图片加载失败:', this.src); this.src='${this.generatePlaceholderImage(new URL(bookmark.url).hostname)}'"
-                            >
+                bookmarkCard.innerHTML = `
+                    <div class="bookmark-thumbnail-wrapper">
+                        <img 
+                            src="${thumbnailSrc}" 
+                            alt="网站缩略图" 
+                            class="bookmark-thumbnail" 
+                            onerror="console.error('图片加载失败:', this.src); this.src='${this.generatePlaceholderImage(new URL(bookmark.url).hostname)}'"
+                        >
+                        ${bookmark.isTemporary ? '<div class="loading-overlay"><div class="spinner"></div></div>' : ''}
+                        <button class="delete-bookmark" data-id="${bookmark.id}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">${bookmark.title}</h5>
+                        <div class="mb-2">
+                            <span class="badge bg-secondary me-1 small">标签：</span>
+                            ${tagsHtml}
                         </div>
-                        <div class="card-body">
-                            <h5 class="card-title">${bookmark.title}</h5>
-                            <p class="card-text small text-muted">
-                                ${bookmark.summary || this.truncateUrl(bookmark.url)}
-                            </p>
-                            <div class="mb-2">
-                                <span class="badge bg-secondary me-1 small">标签：</span>
-                                ${tagsHtml}
-                            </div>
-                            <div class="mb-2">
-                                <span class="badge bg-secondary me-1 small">关键词：</span>
-                                ${keywordsHtml}
-                            </div>
+                        <div class="mb-2">
+                            <span class="badge bg-secondary me-1 small">关键词：</span>
+                            ${keywordsHtml}
                         </div>
-                        <div class="card-footer">
-                            <small class="text-muted">${new Date(bookmark.timestamp).toLocaleString()}</small>
-                        </div>
-                    `;
-                    
-                    // 添加点击事件，跳转到书签链接
-                    bookmarkCard.addEventListener('click', (e) => {
-                        // 防止在可点击元素上触发跳转
-                        if (e.target.closest('a, button, .badge')) {
-                            return;
-                        }
-                        window.open(bookmark.url, '_blank');
-                    });
-
-                    dateGroupContent.appendChild(bookmarkCard);
+                        <p class="card-text small text-muted mt-2">
+                            ${bookmark.summary || this.truncateUrl(bookmark.url)}
+                        </p>
+                    </div>
+                    <div class="card-footer">
+                        <small class="text-muted">${this.formatWechatStyleTime(bookmark.timestamp)}</small>
+                    </div>
+                `;
+                
+                // 添加点击事件，跳转到书签链接
+                bookmarkCard.addEventListener('click', (e) => {
+                    // 防止在可点击元素上触发跳转
+                    if (e.target.closest('a, button, .badge')) {
+                        return;
+                    }
+                    window.open(bookmark.url, '_blank');
                 });
 
-                // 将内容容器添加到日期分组
-                dateGroup.appendChild(dateGroupContent);
-                
-                // 将日期分组添加到主容器
-                this.bookmarksContainer.appendChild(dateGroup);
+                // 添加删除按钮事件
+                const deleteButton = bookmarkCard.querySelector('.delete-bookmark');
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止事件冒泡
+                    const bookmarkId = parseInt(deleteButton.getAttribute('data-id'));
+                    this.deleteBookmark(bookmarkId);
+                });
+
+                this.bookmarksContainer.appendChild(bookmarkCard);
             });
         }
-
-        this.bookmarksContainer.querySelectorAll('.delete-bookmark').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const bookmarkId = parseInt(e.target.getAttribute('data-id'));
-                this.deleteBookmark(bookmarkId);
-            });
-        });
     }
 
     saveBookmarks() {
@@ -518,6 +558,63 @@ const dynamicStyleSheet = `
 
 .clickable-card:hover {
     background-color: #f5f5f5;
+}
+
+.temporary-bookmark {
+    opacity: 0.8;
+    filter: grayscale(50%);
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.list-view .date-group-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.list-view .bookmark-card {
+    margin-bottom: 16px;
+}
+
+.list-view .bookmark-thumbnail-wrapper {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 16px;
+}
+
+.list-view .bookmark-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
 }
 </style>
 `;
