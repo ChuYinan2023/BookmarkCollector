@@ -416,40 +416,41 @@ class BookmarkManager {
                     console.log('缩略图 URL:', thumbnailSrc);  // 调试日志
 
                     const bookmarkCard = document.createElement('div');
+                    bookmarkCard.classList.add('bookmark-card', 'clickable-card');
                     bookmarkCard.innerHTML = `
-                        <div class="bookmark-card">
+                        <div class="bookmark-thumbnail-wrapper">
                             <img 
                                 src="${thumbnailSrc}" 
                                 alt="网站缩略图" 
                                 class="bookmark-thumbnail" 
                                 onerror="console.error('图片加载失败:', this.src); this.src='${this.generatePlaceholderImage(new URL(bookmark.url).hostname)}'"
                             >
-                            <div class="card-body">
-                                <h5 class="card-title">${bookmark.title}</h5>
-                                <p class="card-text small">
-                                    <a href="${bookmark.url}" target="_blank" class="text-decoration-none text-muted">
-                                        ${this.truncateUrl(bookmark.url)}
-                                    </a>
-                                </p>
-                                <div class="mb-2">
-                                    <span class="badge bg-secondary me-1 small">标签：</span>
-                                    ${tagsHtml}
-                                </div>
-                                <div class="mb-2">
-                                    <span class="badge bg-secondary me-1 small">关键词：</span>
-                                    ${keywordsHtml}
-                                </div>
-                                <p class="card-text small text-muted flex-grow-1">${bookmark.summary || '暂无摘要'}</p>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">${bookmark.title}</h5>
+                            <p class="card-text small">
+                                ${this.truncateUrl(bookmark.url)}
+                            </p>
+                            <div class="mb-2">
+                                <span class="badge bg-secondary me-1 small">标签：</span>
+                                ${tagsHtml}
                             </div>
-                            <div class="card-footer">
-                                <small class="text-muted">${bookmark.timestamp}</small>
-                                <button class="btn btn-sm btn-outline-danger delete-bookmark" data-id="${bookmark.id}">
-                                    删除
-                                </button>
+                            <div class="mb-2">
+                                <span class="badge bg-secondary me-1 small">关键词：</span>
+                                ${keywordsHtml}
                             </div>
                         </div>
                     `;
                     
+                    // 添加点击事件，跳转到书签链接
+                    bookmarkCard.addEventListener('click', (e) => {
+                        // 防止在可点击元素上触发跳转
+                        if (e.target.closest('a, button, .badge')) {
+                            return;
+                        }
+                        window.open(bookmark.url, '_blank');
+                    });
+
                     dateGroupContent.appendChild(bookmarkCard);
                 });
 
@@ -498,6 +499,15 @@ const dynamicStyleSheet = `
 .bookmark-thumbnail:hover {
     transform: scale(1.05); /* 悬停时略微放大 */
     box-shadow: 0 6px 8px rgba(0,0,0,0.15); /* 悬停时阴影更明显 */
+}
+
+.clickable-card {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.clickable-card:hover {
+    background-color: #f5f5f5;
 }
 </style>
 `;

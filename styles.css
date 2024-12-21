@@ -102,17 +102,35 @@ body, html {
     background-color: white;
     width: 100%;
     height: 100%;
+    cursor: pointer;  
 }
 
 .bookmark-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background-color: #f5f5f5;  
+}
+
+.bookmark-card .badge,
+.bookmark-card button {
+    pointer-events: auto;
+}
+
+.bookmark-thumbnail-wrapper {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
 }
 
 .bookmark-thumbnail {
-    height: 180px;
     width: 100%;
+    height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.bookmark-card:hover .bookmark-thumbnail {
+    transform: scale(1.05);
 }
 
 .card-body {
